@@ -1,0 +1,647 @@
+---
+title: "analysis_industry_fe"
+output: html_document
+date: "2024-03-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plm)
+library(lfe)
+library(fixest)
+library(lme4)
+library(pglm)
+library(dplyr)
+library(tidyr)
+library(stargazer)
+library(ggplot2)
+```
+
+# READ-IN DATA
+bpl_dict ={'cambodia': 51100, 'iran':53000, 'iraq':53200,'somalia':60050,'poland':45500,'romania':4560, 'ethiopia':60044,
+            'cuba': 25000, 'yugoslavia':45700,'laos':51300, 'ussr':46500,'vietnam':51800, 'afghanistan': 52000}
+```{r}
+df <- read.csv("sample_ind_IV_full.csv",header=TRUE)
+df <- within(df, {
+  never_married <- factor(never_married)
+  CBSA10 <- factor(CBSA10)
+  reg_yr <- factor(reg_yr)
+  ind_yr <- factor(ind_yr)
+  industry <- factor(industry)
+  STATE10 <- factor(STATE10)
+  year <- factor(year)
+  age_sqrd <- age^2
+  count_cbsa <- count_cbsa/10^4 # in ten thousands
+  IV_ct <- IV_ct/10^4 # in ten thousands
+  IV_d_ct <- IV_d_ct/10^4 # in ten thousands
+  count_cbsa_asinh <- asinh(count_cbsa)
+  IV_ct_asinh <- asinh(IV_ct)
+  IV_d_ct_asinh <- asinh(IV_d_ct)
+  log_hrs_work <- log(hrs_work)
+})
+```
+
+
+
+# Female sample
+```{r}
+df_sample <- df %>% filter(sex1968==2)
+table(df_sample$occupation)
+stargazer(df_sample, type="latex", title="Summary Statistics", digits=2)
+```
+
+```{r}
+summary(df_sample %>% count(year))
+```
+
+# employment
+## employed
+
+```{r}
+df_sample_employed <- df_sample %>% drop_na(c(count_cbsa, age, age_sqrd, white,
+                                              never_married, IV_ct, CBSA10,edu, 
+                                              reg_yr, industry, ind_yr, employed))
+```
+
+```{r}
+# without transformation 
+employed_logit0  <- feglm(employed ~ count_cbsa | CBSA10 + reg_yr  + ind_yr,  family=binomial(), data=df_sample_employed)
+summary(employed_logit0, cluster = "CBSA10")
+```
+
+```{r}
+# with inverse hyperbolic sine transformation 
+employed_logit0_asinh  <- feglm(employed ~ count_cbsa_asinh | CBSA10 + reg_yr  + ind_yr, 
+                                family=binomial(), data=df_sample_employed)
+summary(employed_logit0, cluster = "CBSA10")
+```
+
+
+```{r}
+# without transformation 
+employed_linear0 <- felm(employed ~ count_cbsa|CBSA10 + reg_yr + ind_yr|0|CBSA10,data=df_sample_employed)
+summary(employed_linear0)
+```
+
+```{r}
+# without transformation 
+employed_logit1 <-feglm(employed ~ count_cbsa + age + age_sqrd + never_married + edu + white| CBSA10 + reg_yr  + ind_yr, family=binomial(), data=df_sample_employed)
+summary(employed_logit1, cluster = "CBSA10")
+```
+
+```{r}
+# without transformation 
+employed_linear1 <- felm(employed ~ count_cbsa + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr + ind_yr|0|CBSA10,data=df_sample_employed)
+summary(employed_linear1)
+```
+
+## temp_off
+
+```{r}
+df_sample_temp_off <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,
+                                              never_married, IV_ct, CBSA10, edu, 
+                                              reg_yr, temp_off, industry, ind_yr))
+```
+
+```{r}
+# without transformation 
+temp_off_logit0  <- feglm(temp_off ~ count_cbsa | CBSA10 + reg_yr + ind_yr, family=binomial(), data=df_sample_temp_off)
+summary(temp_off_logit0, cluster = "CBSA10")
+```
+
+```{r}
+# with inverse hyperbolic sine transformation 
+temp_off_logit0_asinh  <- feglm(temp_off ~ count_cbsa_asinh | CBSA10 + reg_yr + ind_yr, 
+                                family=binomial(), data=df_sample_temp_off)
+summary(temp_off_logit0, cluster = "CBSA10")
+```
+
+
+```{r}
+# without transformation 
+temp_off_linear0 <- felm(temp_off ~ count_cbsa|CBSA10 + reg_yr + ind_yr|0|CBSA10,data=df_sample_temp_off)
+summary(temp_off_linear0)
+```
+
+```{r}
+# without transformation 
+temp_off_logit1 <-feglm(temp_off ~ count_cbsa + age + age_sqrd + never_married + edu | CBSA10 + reg_yr + ind_yr, family=binomial(), data=df_sample_temp_off)
+summary(temp_off_logit1, cluster = "CBSA10")
+```
+
+```{r}
+# without transformation 
+temp_off_linear1 <- felm(temp_off ~ count_cbsa + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr + ind_yr|0|CBSA10,data=df_sample_temp_off)
+summary(temp_off_linear1)
+```
+
+
+## unemployed
+### regardless of industry affiliation
+```{r}
+df_sample_unemployed_full <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,
+                                              never_married, IV_ct, CBSA10, edu, 
+                                              reg_yr, unemployed))
+```
+
+```{r}
+# without transformation 
+unemployed_logit0  <- feglm(unemployed ~ count_cbsa | CBSA10 + reg_yr, family=binomial(), data=df_sample_unemployed_full)
+summary(unemployed_logit0, cluster = "CBSA10")
+```
+```{r}
+# without transformation 
+unemployed_linear0 <- felm(unemployed ~ count_cbsa|CBSA10 + reg_yr|0|CBSA10,data=df_sample_unemployed_full)
+summary(unemployed_linear0)
+```
+```{r}
+# without transformation 
+unemployed_linear1 <- felm(unemployed ~ count_cbsa + age + age_sqrd + never_married + edu+white|
+                             CBSA10+reg_yr|0|CBSA10,data=df_sample_unemployed_full)
+summary(unemployed_linear1)
+```
+
+### control for industry
+```{r}
+df_sample_unemployed <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,
+                                              never_married, IV_ct, CBSA10, edu,
+                                              reg_yr, unemployed, industry, ind_yr))
+```
+
+```{r}
+# without transformation 
+unemployed_logit0  <- feglm(unemployed ~ count_cbsa | CBSA10 + reg_yr + ind_yr, family=binomial(), data=df_sample_unemployed)
+summary(unemployed_logit0, cluster = "CBSA10")
+```
+
+```{r}
+# with inverse hyperbolic sine transformation 
+unemployed_logit0_asinh  <- feglm(unemployed ~ count_cbsa_asinh | CBSA10 + reg_yr+ ind_yr, 
+                                family=binomial(), data=df_sample_unemployed)
+summary(unemployed_logit0, cluster = "CBSA10")
+```
+
+
+```{r}
+# without transformation 
+unemployed_linear0 <- felm(unemployed ~ count_cbsa|CBSA10 + reg_yr+ ind_yr|0|CBSA10,data=df_sample_unemployed)
+summary(unemployed_linear0)
+```
+
+```{r}
+# without transformation 
+unemployed_logit1 <-feglm(unemployed ~ count_cbsa + age + age_sqrd + never_married + edu+white | CBSA10 +reg_yr+ ind_yr, family=binomial(), data=df_sample_unemployed)
+summary(unemployed_logit1, cluster = "CBSA10")
+```
+
+```{r}
+# without transformation 
+unemployed_linear1 <- felm(unemployed ~ count_cbsa + age + age_sqrd + never_married + edu+white|
+                             CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_unemployed)
+summary(unemployed_linear1)
+```
+```{r}
+# with transformation 
+unemployed_linear1_asinh <- felm(unemployed ~ count_cbsa_asinh + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_unemployed)
+summary(unemployed_linear1)
+```
+
+
+
+```{r}
+stargazer(employed_linear1, temp_off_linear1, unemployed_linear1, type="latex")
+```
+
+
+## IV
+
+#### employed
+##### discrete
+```{r}
+
+
+employed1_iv2_d <- felm(employed ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_employed)
+summary(employed1_iv2_d)
+waldtest(employed1_iv2_d$stage1, ~IV_d_ct)
+```
+##### continuous
+```{r}
+
+employed1_iv2 <- felm(employed ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_employed)
+summary(employed1_iv2)
+waldtest(employed1_iv2$stage1, ~IV_ct)
+```
+
+
+
+
+#### temp-off
+##### discrete
+```{r}
+
+
+temp1_iv2_d <- felm(temp_off ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_temp_off)
+summary(temp1_iv2_d)
+waldtest(temp1_iv2_d$stage1, ~IV_d_ct)
+```
+##### continuous
+```{r}
+
+temp1_iv2 <- felm(temp_off ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_temp_off)
+summary(temp1_iv2)
+waldtest(temp1_iv2$stage1, ~IV_ct)
+```
+#### unemployed
+##### discrete
+```{r}
+
+unemployed1_iv2_d <- felm(unemployed ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_unemployed)
+summary(unemployed1_iv2_d)
+waldtest(unemployed1_iv2_d$stage1, ~IV_d_ct)
+```
+##### continuous
+```{r}
+unemployed0_iv1 <- felm(count_cbsa ~ IV_ct |CBSA10+reg_yr+ind_yr|0|CBSA10,
+                      data=df_sample_unemployed)
+summary(unemployed0_iv1)
+
+unemployed1_iv1 <- felm(count_cbsa ~ IV_ct + age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_unemployed)
+summary(unemployed1_iv1)
+
+
+unemployed1_iv2 <- felm(unemployed ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_unemployed)
+summary(unemployed1_iv2)
+waldtest(unemployed1_iv2$stage1, ~IV_ct)
+```
+
+
+
+
+
+
+# hous_production
+
+```{r}
+df_sample_hous_production <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd,white, 
+                                              never_married, IV_ct, CBSA10, edu, 
+                                              reg_yr, hous_production))
+```
+
+## baseline
+
+```{r}
+# without transformation 
+hous_production_logit0  <- feglm(hous_production ~ count_cbsa | CBSA10 + reg_yr, family=binomial(), data=df_sample_hous_production)
+summary(hous_production_logit0, cluster = "CBSA10")
+```
+
+```{r}
+# with inverse hyperbolic sine transformation 
+hous_production_logit0_asinh  <- feglm(hous_production ~ count_cbsa_asinh | CBSA10 + reg_yr, 
+                                family=binomial(), data=df_sample_hous_production)
+summary(hous_production_logit0, cluster = "CBSA10")
+```
+
+
+```{r}
+# without transformation 
+hous_production_linear0 <- felm(hous_production ~ count_cbsa|CBSA10 + reg_yr|0|CBSA10,data=df_sample_hous_production)
+summary(hous_production_linear0)
+```
+
+```{r}
+# without transformation 
+hous_production_logit1 <-feglm(hous_production ~ count_cbsa + age + age_sqrd + never_married + edu+white | CBSA10 + reg_yr, family=binomial(), data=df_sample_hous_production)
+summary(hous_production_logit1, cluster = "CBSA10")
+```
+
+```{r}
+# without transformation 
+hous_production_linear1 <- felm(hous_production ~ count_cbsa + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr|0|CBSA10,data=df_sample_hous_production)
+summary(hous_production_linear1)
+```
+
+## IV
+### discrete
+```{r}
+
+
+hous1_iv2_d <- felm(hous_production ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_hous_production)
+summary(hous1_iv2_d)
+waldtest(hous1_iv2_d$stage1, ~IV_d_ct)
+```
+
+```{r}
+summary(felm(count_cbsa ~ IV_ct |CBSA10+reg_yr|0|CBSA10,
+                      data=df_sample_hous_production))
+```
+
+```{r}
+ggplot(aes(x=IV_ct, y=count_cbsa), data=df_sample_hous_production)+geom_point()
+```
+
+### continuous
+```{r}
+hous0_iv1 <- felm(count_cbsa ~ IV_ct |CBSA10+reg_yr|0|CBSA10,
+                      data=df_sample_hous_production)
+summary(hous0_iv1)
+
+hous1_iv1 <- felm(count_cbsa ~ IV_ct + age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr|0|CBSA10,data=df_sample_hous_production)
+summary(hous1_iv1)
+
+hous1_iv2 <- felm(hous_production ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_hous_production)
+summary(hous1_iv2)
+
+waldtest(hous1_iv2$stage1, ~IV_ct)
+```
+
+
+
+# hours worked
+## baseline
+
+```{r}
+df_sample_hrs_work <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,edu, 
+                                              never_married, IV_ct, IV_d_ct, CBSA10, 
+                                              reg_yr, hrs_work, industry, ind_yr,))
+```
+
+
+
+```{r}
+# without transformation 
+hrs_work0 <- felm(hrs_work ~ count_cbsa|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_hrs_work)
+summary(hrs_work0)
+```
+```{r}
+# with transformation 
+hrs_work0_asinh <- felm(hrs_work ~ count_cbsa_asinh|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_hrs_work)
+summary(hrs_work0_asinh)
+```
+
+```{r}
+# without transformation 
+hrs_work1 <- felm(hrs_work ~ count_cbsa + age + age_sqrd +white+ never_married + edu|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_hrs_work)
+summary(hrs_work1)
+```
+
+```{r}
+# with transformation 
+hrs_work1_asinh <- felm(hrs_work ~ count_cbsa_asinh + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_hrs_work)
+summary(hrs_work1_asinh)
+```
+```{r}
+stargazer(hous_production_linear0, hous_production_linear1,type='text')
+```
+
+```{r}
+stargazer(hrs_work0,hrs_work1, type='text')
+
+```
+
+## IV
+### discrete
+```{r}
+
+
+hrs_work1_iv2_d <- felm(hrs_work ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_hrs_work)
+summary(hrs_work1_iv2_d)
+waldtest(hrs_work1_iv2_d$stage1, ~IV_d_ct)
+```
+
+```{r}
+summary(felm(count_cbsa ~ IV_ct |CBSA10+reg_yr+ind_yr|0|CBSA10,
+                      data=df_sample))
+```
+
+```{r}
+ggplot(aes(x=IV_d_ct, y=count_cbsa), data=df_sample_hrs_work)+geom_point()
+ggplot(aes(x=IV_ct, y=count_cbsa), data=df_sample_hrs_work)+geom_point()
+```
+
+### continuous
+
+```{r}
+
+hrs_work1_iv2 <- felm(hrs_work ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_hrs_work)
+summary(hrs_work1_iv2)
+
+waldtest(hrs_work1_iv2$stage1, ~IV_ct)
+```
+
+# occupation mobility
+## baseline
+
+```{r}
+df_sample_occ <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,
+                                              never_married, IV_ct, IV_d_ct, CBSA10, edu, 
+                                              reg_yr, occupation_mobility, industry, ind_yr))
+```
+
+
+
+```{r}
+# without transformation 
+occ0 <- felm(occupation_mobility ~ count_cbsa|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ)
+summary(occ0)
+```
+```{r}
+# with transformation 
+occ0_asinh <- felm(occupation_mobility ~ count_cbsa_asinh|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ)
+summary(occ0_asinh)
+```
+
+```{r}
+# without transformation 
+occ1 <- felm(occupation_mobility ~ count_cbsa + age + age_sqrd +white+ never_married + edu|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ)
+summary(occ1)
+```
+
+```{r}
+# with transformation 
+occ1_asinh <- felm(occupation_mobility ~ count_cbsa_asinh + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ)
+summary(occ1_asinh)
+```
+
+
+```{r}
+stargazer(occ0,occ1, type='text')
+
+```
+
+## IV
+### discrete
+```{r}
+
+occ1_iv2_d <- felm(occupation_mobility ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_occ)
+summary(occ1_iv2_d)
+waldtest(occ1_iv2_d$stage1, ~IV_d_ct)
+```
+
+```{r}
+summary(felm(count_cbsa ~ IV_ct |CBSA10+reg_yr+ind_yr|0|CBSA10,
+                      data=df_sample))
+```
+
+```{r}
+ggplot(aes(x=IV_d_ct, y=count_cbsa), data=df_sample_occ)+geom_point()
+ggplot(aes(x=IV_ct, y=count_cbsa), data=df_sample_occ)+geom_point()
+```
+### continuous
+```{r}
+
+occ1_iv2 <- felm(occupation_mobility ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_occ)
+summary(occ1_iv2)
+
+waldtest(occ1_iv2$stage1, ~IV_ct)
+```
+
+
+# occupation change direction
+## baseline
+
+```{r}
+df_sample_occ_change <- df_sample %>% drop_na(c(count_cbsa, age,  age_sqrd, white,edu, 
+                                              never_married, IV_ct, IV_d_ct, CBSA10, 
+                                              reg_yr, occ_change, industry, ind_yr))
+```
+
+
+
+```{r}
+# without transformation 
+occ_change1 <- felm(occ_change ~ count_cbsa + age + age_sqrd +white+ never_married + edu|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ_change)
+summary(occ_change1)
+```
+
+```{r}
+# with transformation 
+occ_change1_asinh <- felm(occ_change ~ count_cbsa_asinh + age + age_sqrd + never_married + edu+white|CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ_change)
+summary(occ_change1_asinh)
+```
+
+
+```{r}
+stargazer(occ_change0,occ_change1, type='text')
+
+```
+
+## IV
+### discrete
+```{r}
+
+
+occ_change1_iv2_d <- felm(occ_change ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_d_ct)|CBSA10,
+                      data=df_sample_occ_change)
+summary(occ_change1_iv2_d)
+waldtest(occ_change1_iv2_d$stage1, ~IV_d_ct)
+```
+
+```{r}
+summary(felm(count_cbsa ~ IV_ct |CBSA10+reg_yr+ind_yr|0|CBSA10,
+                      data=df_sample))
+```
+
+```{r}
+ggplot(aes(x=IV_d_ct, y=count_cbsa), data=df_sample_occ_change)+geom_point()
+ggplot(aes(x=IV_ct, y=count_cbsa), data=df_sample_occ_change)+geom_point()
+```
+##### continuous
+```{r}
+occ_change0_iv1 <- felm(count_cbsa ~ IV_ct |CBSA10+reg_yr+ind_yr|0|CBSA10,
+                      data=df_sample_occ_change)
+summary(occ_change0_iv1)
+
+occ_change1_iv1 <- felm(count_cbsa ~ IV_ct + age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|0|CBSA10,data=df_sample_occ_change)
+summary(occ_change1_iv1)
+
+occ_change1_iv2 <- felm(occ_change ~  age + age_sqrd + never_married + edu+white|
+                        CBSA10+reg_yr+ind_yr|(count_cbsa~IV_ct)|CBSA10,
+                      data=df_sample_occ_change)
+summary(occ_change1_iv2)
+
+waldtest(occ_change1_iv2$stage1, ~IV_ct)
+```
+
+#Summarize
+
+```{r}
+stargazer(employed_linear1,temp_off_linear1,unemployed_linear1, type="latex")
+```
+
+```{r}
+stargazer(hous_production_linear1, hrs_work1, occ1, occ_change1,type="latex")
+```
+
+
+```{r}
+stargazer(employed1_iv2,temp1_iv2, unemployed1_iv2, type="latex")
+```
+```{r}
+waldtest(employed1_iv2$stage1,~IV_ct)
+summary(employed1_iv2$stage1)
+waldtest(employed1_iv2_d$stage1,~IV_d_ct)
+summary(employed1_iv2_d$stage1)
+```
+
+```{r}
+stargazer(employed1_iv2_d,temp1_iv2_d, unemployed1_iv2_d, type="latex")
+```
+
+```{r}
+stargazer(hous1_iv2, hrs_work1_iv2, occ1_iv2, occ_change1_iv2,type="latex")
+```
+
+```{r}
+stargazer(hous1_iv2_d, hrs_work1_iv2_d, occ1_iv2_d, occ_change1_iv2_d,type="latex")
+```
+```{r}
+waldtest(hous1_iv2$stage1,~IV_ct)
+summary(hous1_iv2$stage1)
+waldtest(hous1_iv2_d$stage1,~IV_d_ct)
+summary(hous1_iv2_d$stage1)
+```
+
+
+```{r}
+waldtest(hrs_work1_iv2$stage1,~IV_ct)
+summary(hrs_work1_iv2$stage1)
+waldtest(hrs_work1_iv2_d$stage1,~IV_d_ct)
+summary(hrs_work1_iv2_d$stage1)
+```
+
+
+```{r}
+waldtest(occ1_iv2$stage1,~IV_ct)
+summary(occ1_iv2$stage1)
+waldtest(occ1_iv2_d$stage1,~IV_d_ct)
+summary(occ1_iv2_d$stage1)
+```

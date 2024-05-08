@@ -14,17 +14,17 @@ input: var_dict.json \
 output: fam_command.txt
 
 - clean_fam.py \
-Clean PSID family data
+Clean PSID family data \
 input: FAM1981.csv,...,FAM2007.csv, var_dict.json \
 output: psid_fam.csv
 
 - clean_psid_ind.py \
-Clean PSID individual data
+Clean PSID individual data \
 input: psid_ind.csv; var_dict.json \
 output: psid_ind_long.csv
 
 - merge_ind_fam.py \
-Merge PSID family and individual data
+Merge PSID family and individual data \
 input: psid_ind_long.csv, psid_fam.csv \
 output: psid_ind_fam.csv
 

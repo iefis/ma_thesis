@@ -32,11 +32,11 @@ output: psid_ind_fam.csv
 Clean ORR data
 input: orr_ind_1975_1990.csv; orr_ind_1991_2008.csv  
 ([available for download here](https://www.refugeeresettlementdata.com/data.html) with
-the raw data for Figure 1 in [ORR]()) \
+the raw data for Figure 1 in [ORR](https://github.com/iefis/ma_thesis/tree/main/data/ORR)) \
 output: country_year_orr.csv; year_county_orr.csv
 
 - merge_ind_orr.py \
-Merge individual level data with ORR data \
+Merge individual-level data with ORR data \
 input: psid_ind_fam.csv; year_county_orr.csv \
 output: ind_orr_sub.csv 
 
@@ -48,7 +48,7 @@ output: sample_ind.csv
 - clean_cps.py \
 Clean CPS subsample data to construct IV and merge with the main sample and shock data \
 input: 
-cps_sub.csv (CPS variable list in [CPS]()); 
+cps_sub.csv (CPS variable list in [CPS](https://github.com/iefis/ma_thesis/tree/main/data/CPS)); 
 metro_1990.csv; matched_cbsa.csv; sample_ind.csv; country_year_orr.csv \
 output: sample_ind_IV.csv
 

@@ -5,7 +5,7 @@
 
 - psid_var.py \
 Turn PSID variable list into a dictionary \
-input: [PSID_variables.csv]() \
+input: [PSID_variables.csv](https://github.com/iefis/ma_thesis/tree/main/data/PSID) \
 output: var_dict.json
 
 - get_fam.py \
